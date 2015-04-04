@@ -1,5 +1,6 @@
 (ns ra.core
-  (:use clocop.core clocop.constraints)
+  (:require [ra.clocop :refer [make-problem]]
+            [ra.solver :as solver :refer [variable add-constraint! solve value]])
   (:gen-class))
 
 (defn graph-vertices [graph]
@@ -20,7 +21,10 @@
 (defn graph-starts [graph]
   (filter (partial graph-is-start? graph) (graph-vertices graph)))
 
-(defn paths-from [graph start]
+(defmacro defmemofn [name & rest]
+  `(def ~name (memoize (fn ~@rest))))
+
+(defmemofn paths-from [graph start]
   (if (graph-last? graph start)
     [[start]]
     (let [after-start (graph-next graph start)
@@ -47,71 +51,53 @@
   (-> (matrix-row m row)
       (nth col)))
 
-(defn x-vals [x]
-  (mapv (fn [row] (mapv #(.value %) row)) x))
-
 (def oo 1000000) ;; infinity
-
-(defn make-problem []
-  (store))
-
-(defn variable [name]
-  (int-var name 0 1))
-
-(def operators-map
-  {=   $=
-   <=  $<=
-   *   $*
-   -   $-
-   +   $+})
-(defn $ [f & args]
-  (if (every? number? args)
-    (apply f args)
-    (apply (get operators-map f) args)))
-
-(defn sum [lst] (apply (partial $ +) lst))
-
-(defn matrix-inner-product [m1 m2]
-  (sum (map (partial $ *) (flatten m1) (flatten m2))))
-
-(defn time [p contractors-count x t]
-  (sum (for [i p, j (range contractors-count)]
-           ($ * (matrix-ref x (- i 1) j) (int (matrix-ref t (- i 1) j))))))
-
-(defn finances [x f]
-  (matrix-inner-product x f))
-
-(defn quality [bp-count contractors-count x w q]
-  (sum (for [i (range bp-count)
-               j (range contractors-count)]
-           ($ * (matrix-ref x i j)
-              (* (nth w i)
-                 (matrix-ref q i j))))) )
 
 ; example
 ; contractors columns       8
 ; bp          rows          5
 (defn ra [w t f q F T graph]
-  (with-store (store)
-    (let [problem (make-problem)
-          bp-count (matrix-rows t)
-          contractors-count (matrix-columns t)
-          P (paths graph)
-          x (for [i (range bp-count)]
-              (for [j (range contractors-count)]
-                (variable (str "x" i "_" j))))
-          quality-var (int-var "quality" 0 oo)]
-      ;; sum of x = 1
-      (doseq [i (range bp-count)]
-        (constrain! ($ = 1 (sum (matrix-row x i)))))
-      ;; finances
-      (constrain! ($ <= (finances x f) F))
-      ;; time
-      (doseq [p P] (constrain! ($ <= (time p contractors-count x t) T)))
-      ;; quality
-      (constrain! ($ = quality-var (quality bp-count contractors-count x w q)))
-      (solve! :minimize ($ - 0 quality-var))
-      {:x (x-vals x)
-       :quality (.value quality-var)
-       :finances (finances x f)
-       :time (apply max (for [p P] (time p contractors-count (x-vals x) t)))})))
+  (let [problem (make-problem)
+        operators {=   solver/=
+                   <=  solver/<=
+                   *   solver/*
+                   -   solver/-
+                   +   solver/+}
+        $ (fn [f & args]
+            (if (every? number? args)
+              (apply f args)
+              ((get operators f) problem args)))
+        bp-count (matrix-rows t)
+        contractors-count (matrix-columns t)
+        P (paths graph)
+        x (for [i (range bp-count)]
+            (for [j (range contractors-count)]
+              (variable problem (str "x" i "_" j))))
+        sum (fn [lst] (apply (partial $ +) lst))
+        matrix-inner-product (fn [m1 m2]
+                               (sum (map (partial $ *) (flatten m1) (flatten m2))))
+        time (fn [p x]
+               (sum (for [i p, j (range contractors-count)]
+                      ($ * (matrix-ref x (- i 1) j) (int (matrix-ref t (- i 1) j))))))
+        finances (fn [x] (matrix-inner-product x f))
+        quality (fn [x]
+                  (sum (for [i (range bp-count)
+                             j (range contractors-count)]
+                         ($ * (matrix-ref x i j)
+                            (* (nth w i)
+                               (matrix-ref q i j))))))
+        x-vals (fn [x] (mapv (fn [row] (mapv #(value problem %) row)) x))]
+    ;; sum of x = 1
+    (doseq [i (range bp-count)]
+      (add-constraint! problem ($ = 1 (sum (matrix-row x i)))))
+    ;; finances
+    (add-constraint! problem ($ <= (finances x) F))
+    ;; time
+    (doseq [p P] (add-constraint! problem ($ <= (time p x) T)))
+    ;; quality
+    (solve problem :minimize ($ - 0 (quality x)))
+    (let [xvals (x-vals x)]
+      {:x xvals
+       :quality (quality xvals)
+       :finances (finances xvals)
+       :time (apply max (for [p P] (time p xvals)))})))
