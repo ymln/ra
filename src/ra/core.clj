@@ -1,6 +1,6 @@
 (ns ra.core
-  (:require [ra.clocop :refer [make-problem]]
-            [ra.solver :as solver :refer [variable add-constraint! solve value]])
+  (:require [ra.glpk :refer [make-problem]]
+            [ra.solver :as solver :refer [variable add-constraint! solve! value]])
   (:gen-class))
 
 (defn graph-vertices [graph]
@@ -53,6 +53,9 @@
 
 (def oo 1000000) ;; infinity
 
+(defn flatten-matrix [m]
+  (apply concat m))
+
 ; example
 ; contractors columns       8
 ; bp          rows          5
@@ -61,7 +64,6 @@
         operators {=   solver/=
                    <=  solver/<=
                    *   solver/*
-                   -   solver/-
                    +   solver/+}
         $ (fn [f & args]
             (if (every? number? args)
@@ -75,7 +77,7 @@
               (variable problem (str "x" i "_" j))))
         sum (fn [lst] (apply (partial $ +) lst))
         matrix-inner-product (fn [m1 m2]
-                               (sum (map (partial $ *) (flatten m1) (flatten m2))))
+                               (sum (map #($ * %1 %2) (flatten-matrix m1) (flatten-matrix m2))))
         time (fn [p x]
                (sum (for [i p, j (range contractors-count)]
                       ($ * (matrix-ref x (- i 1) j) (int (matrix-ref t (- i 1) j))))))
@@ -89,13 +91,13 @@
         x-vals (fn [x] (mapv (fn [row] (mapv #(value problem %) row)) x))]
     ;; sum of x = 1
     (doseq [i (range bp-count)]
-      (add-constraint! problem ($ = 1 (sum (matrix-row x i)))))
+      (add-constraint! problem ($ = (sum (matrix-row x i)) 1)))
     ;; finances
     (add-constraint! problem ($ <= (finances x) F))
     ;; time
     (doseq [p P] (add-constraint! problem ($ <= (time p x) T)))
     ;; quality
-    (solve problem :minimize ($ - 0 (quality x)))
+    (solve! problem :maximize (quality x))
     (let [xvals (x-vals x)]
       {:x xvals
        :quality (quality xvals)

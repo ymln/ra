@@ -18,6 +18,8 @@
   (is (= (dissoc (ra ct/w test-task-list 100000 60) :x)
          (dissoc (ct/my-ra               100000 60) :x))))
 
+(def large-wbs-tasks-w (repeat 288 1))
+
 (def large-wbs-tasks
   [[1 "Network OS Extended Addressing Project (and Survey Packet)" [10 15 17 13 15] [100 99 99 100 100] [98 110 111 109 100] [2 74 118 279 280 283 286 288]]
    [2 "Phase 2 -- Kickoff" [2 6 3 4 2] [334 300 300 299 300] [78 73 72 91 91] [3 11 16 22 26 29 32 37 42 52 55 60 64 69]]
@@ -311,3 +313,9 @@
 (defn large-wbs-ra-run []
   (let [w (repeat 288 1)]
     (ra w large-wbs-tasks 6000000 300)))
+
+(deftest large-wbs-tasks-test
+  (let [sol (ra large-wbs-tasks-w large-wbs-tasks 70000 300)]
+    (is (= (dissoc sol :x) {:quality 139430
+                            :finances 69835
+                            :time 226}))))

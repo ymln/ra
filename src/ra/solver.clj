@@ -6,7 +6,6 @@
   (=  [this args])
   (<= [this args])
   (*  [this args])
-  (-  [this args])
   (+  [this args])
-  (solve [this direction constraint])
+  (solve! [this direction constraint])
   (value [this x]))

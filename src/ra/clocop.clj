@@ -1,8 +1,11 @@
 (ns ra.clocop
-  (:require [clocop.core :as clocop :refer [with-store store constrain! solve! int-var]]
+  (:require [clocop.core :as clocop :refer [with-store store constrain! int-var]]
             [clocop.constraints :as c]
             [ra.solver :refer [Solver]])
   (:refer-clojure :exclude [= <= * - +]))
+
+(defn negate [arg]
+  (c/$- 0 arg))
 
 (defn make-problem []
   (let [store (store)]
@@ -15,8 +18,9 @@
       (=  [this args] (with-store store (apply  c/$=  args)))
       (<= [this args] (with-store store (apply  c/$<= args)))
       (*  [this args] (with-store store (reduce c/$*  args)))
-      (-  [this args] (with-store store (reduce c/$-  args)))
       (+  [this args] (with-store store (reduce c/$+  args)))
-      (solve [this direction constraint]
-        (with-store store (solve! direction constraint)))
+      (solve! [this direction constraint]
+        (with-store store (clocop/solve! :minimize (case direction
+                                                     :minimize constraint
+                                                     :maximize (negate constraint)))))
       (value [this x] (.value x)))))

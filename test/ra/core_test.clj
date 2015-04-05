@@ -49,15 +49,9 @@
 
 (deftest ra-test
   (let [sol (my-ra 100000 60)]
-    (is (= (:x sol) [[1 0 0 0 0]
-                     [1 0 0 0 0]
-                     [1 0 0 0 0]
-                     [1 0 0 0 0]
-                     [0 1 0 0 0]
-                     [0 0 1 0 0]
-                     [0 0 0 1 0]
-                     [0 0 0 1 0]]))
-    (is (= (:quality sol) 968))))
+    (is (= (dissoc sol :x) {:quality 968
+                            :finances 100000
+                            :time 44}))))
 
 (defn round [x] (Math/round (double x)))
 (def Fs (range 80000 120000 1000))
