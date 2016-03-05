@@ -1,4 +1,5 @@
-(ns ra.solver)
+(ns ra.solver
+  (:refer-clojure :exclude [= <= * +]))
 
 (defprotocol Solver
   (variable [this name])

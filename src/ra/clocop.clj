@@ -1,8 +1,8 @@
 (ns ra.clocop
+  (:refer-clojure :exclude [= <= * - +])
   (:require [clocop.core :as clocop :refer [with-store store constrain! int-var]]
             [clocop.constraints :as c]
-            [ra.solver :refer [Solver]])
-  (:refer-clojure :exclude [= <= * - +]))
+            [ra.solver :refer [Solver]]))
 
 (defn negate [arg]
   (c/$- 0 arg))

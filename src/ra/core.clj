@@ -1,5 +1,5 @@
 (ns ra.core
-  (:require [ra.glpk :refer [make-problem]]
+  (:require [ra.clocop :refer [make-problem]]
             [ra.solver :as solver :refer [variable add-constraint! solve! value]])
   (:gen-class))
 

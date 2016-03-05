@@ -8,7 +8,8 @@
                  [net.mikera/vectorz-clj "0.28.0"]
                  [incanter/incanter-core "1.5.6"]
                  [incanter/incanter-charts "1.5.6"]
-                 [org.gnu.glpk/glpk-java "1.0.37"]]
+                 [org.gnu.glpk/glpk-java "1.0.37"]
+                 [com.joptimizer/joptimizer "3.4.0"]]
   :main ^:skip-aot ra.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
